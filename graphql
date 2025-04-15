@@ -1,51 +1,31 @@
 import requests
+import urllib.parse
 import re
-import time
 
-# Configuration
-url = "https://www.site.com/graphql"
+# Load words from text file
+with open(r"2025-04-01_20250402_045005_words.txt", "r") as f:
+    words = [line.strip() for line in f if line.strip()]
+
+# Headers (copied from your request)
 headers = {
-    "Host": "www.site.com",
-    "Cookie": "_csrf=xxxxx; jwt=xxx.xxx.xxx;",
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0",
+    "Host": "www.target.com",
+    "Cookie": "__csrf=*****; xsrf_token=****; jwt=****;",
+    "User-Agent": "Mozilla/5.0",
     "Accept": "application/json",
     "Accept-Language": "en-US,en;q=0.5",
     "Accept-Encoding": "gzip, deflate, br",
-    "X-Goat-Sales-Channel": "2",
-    "X-Csrf-Token": "xxxxxxxxxxxxxxxxxxxxx",
-    "Sec-Fetch-Dest": "empty",
-    "Sec-Fetch-Mode": "cors",
-    "Sec-Fetch-Site": "same-origin",
-    "X-Pwnfox-Color": "magenta",
-    "Te": "trailers"
+    "X-Csrf-Token": "*********",
+    "Connection": "keep-alive"
 }
 
-# Load the wordlist
-with open(r"/home/kali/Desktop/raft-large-words-lowercase.txt", "r") as file:
-    wordlist = [line.strip() for line in file]
+# Send request for each word
+for word in words:
+    encoded_query = urllib.parse.quote(f"{{{word}}}")
+    url = f"https://www.target.com/graphql?query={encoded_query}"
 
-# Function to send the request and grep the response
-def fuzz_placeholder(word):
-    query = f'{{{word}{{name}}}}'
-    #print(f"[+] Sending request with placeholder: {word}")
-    
-    try:
-        response = requests.get(url, headers=headers, params={"query": query})
-        text = response.text
+    response = requests.get(url, headers=headers)
 
-        # Regular expression to extract the suggestion
-        match = re.search(r'Did you mean \\"(.*?)\\"', text)
-        
-        # Format the output
+    if "Did you mean" in response.text:
+        match = re.search(r'Did you mean \\"(.*?)\\"', response.text)
         if match:
-            print(f"Did you mean: {match.group(1)}")
-        else:
-            pass
-
-    except requests.exceptions.RequestException as e:
-        print(f'[-] Error: {e}')
-
-# Send requests with 1-second intervals
-for word in wordlist:
-    fuzz_placeholder(word)
-    time.sleep(1)
+            print(match.group(1))
